@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function isActiveUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).data.status == 'active';
+    }
+
+    function isAdmin() {
+      return isActiveUser() && userDoc(request.auth.uid).data.role == 'admin';
+    }
+
+    match /users/{userId} {
+      allow read: if isActiveUser();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /categories/{document=**} {
+      allow read: if isActiveUser();
+      allow write: if isAdmin();
+    }
+
+    match /units/{document=**} {
+      allow read: if isActiveUser();
+      allow write: if isAdmin();
+    }
+
+    match /items/{document=**} {
+      allow read: if isActiveUser();
+      allow write: if isAdmin();
+    }
+
+    match /rounds/{document=**} {
+      allow read: if isActiveUser();
+      allow write: if isActiveUser();
+    }
+
+    match /requests/{document=**} {
+      allow read: if isActiveUser();
+      allow write: if isActiveUser();
+    }
+
+    match /logs/{document=**} {
+      allow read: if isActiveUser();
+      allow create: if isActiveUser();
+      allow update, delete: if false;
+    }
+
+    match /notifications/{document=**} {
+      allow read: if isActiveUser();
+      allow create: if isActiveUser();
+      allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

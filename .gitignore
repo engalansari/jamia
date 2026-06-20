@@ -1,0 +1,27 @@
+# Local agent/session state
+.agents/
+.codex/
+
+# Local SDK/tooling
+tools/flutter/
+
+# Firebase local cache/logs
+.firebase/
+firebase-debug.log
+*.log
+
+# Build outputs and package caches
+app/.dart_tool/
+app/build/
+app/.flutter-plugins-dependencies
+
+# IDE/user files
+app/.idea/
+*.iml
+
+# Local screenshots/debug captures
+/*.png
+
+# OS cruft
+.DS_Store
+Thumbs.db
