@@ -41,15 +41,28 @@ class JamiaApp extends StatefulWidget {
     context.findAncestorStateOfType<_JamiaAppState>()?.setLocale(locale);
   }
 
+  static void toggleTheme(BuildContext context) {
+    context.findAncestorStateOfType<_JamiaAppState>()?.toggleTheme();
+  }
+
   @override
   State<JamiaApp> createState() => _JamiaAppState();
 }
 
 class _JamiaAppState extends State<JamiaApp> {
   Locale _locale = const Locale('ar');
+  ThemeMode _themeMode = ThemeMode.light;
 
   void setLocale(Locale locale) {
     setState(() => _locale = locale);
+  }
+
+  void toggleTheme() {
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark
+          ? ThemeMode.light
+          : ThemeMode.dark;
+    });
   }
 
   @override
@@ -60,6 +73,7 @@ class _JamiaAppState extends State<JamiaApp> {
       debugShowCheckedModeBanner: false,
       title: strings.appName,
       locale: _locale,
+      themeMode: _themeMode,
       navigatorObservers: widget.enableTelemetry
           ? [FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance)]
           : const [],
@@ -69,104 +83,127 @@ class _JamiaAppState extends State<JamiaApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'sans-serif',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2F55C7),
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF5F7FC),
-        textTheme: ThemeData.light().textTheme.apply(
-          fontFamily: 'sans-serif',
-          bodyColor: const Color(0xFF111827),
-          displayColor: const Color(0xFF111827),
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Color(0xFFF5F7FC),
-          foregroundColor: Color(0xFF111827),
-          titleTextStyle: TextStyle(
-            fontFamily: 'sans-serif',
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: const BorderSide(color: Color(0xFF9AAEF0), width: 1.4),
-          ),
-        ),
-        listTileTheme: const ListTileThemeData(
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          iconColor: Color(0xFF2F55C7),
-          titleTextStyle: TextStyle(
-            fontFamily: 'sans-serif',
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF111827),
-          ),
-          subtitleTextStyle: TextStyle(
-            fontFamily: 'sans-serif',
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF7D8AA2),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFDDE5F6)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2F55C7), width: 1.6),
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(64, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(64, 50),
-            side: const BorderSide(color: Color(0xFF9AAEF0), width: 1.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-        ),
-        chipTheme: ChipThemeData(
-          backgroundColor: const Color(0xFFEFF3FF),
-          labelStyle: const TextStyle(
-            color: Color(0xFF2F55C7),
-            fontWeight: FontWeight.w900,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-        ),
-      ),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
       home: Directionality(
         textDirection: strings.textDirection,
         child: widget.useAuthGate
             ? const AuthGate()
             : const HomeShell(enableLiveData: false),
+      ),
+    );
+  }
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF2F55C7),
+      brightness: brightness,
+    );
+    final surface = isDark ? const Color(0xFF101827) : const Color(0xFFF5F7FC);
+    final cardColor = isDark ? const Color(0xFF172033) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF3B4A70)
+        : const Color(0xFF9AAEF0);
+    final textColor = isDark
+        ? const Color(0xFFF3F6FF)
+        : const Color(0xFF111827);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB9C4DB)
+        : const Color(0xFF7D8AA2);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      fontFamily: 'sans-serif',
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: surface,
+      textTheme: (isDark ? ThemeData.dark() : ThemeData.light()).textTheme
+          .apply(
+            fontFamily: 'sans-serif',
+            bodyColor: textColor,
+            displayColor: textColor,
+          ),
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: surface,
+        foregroundColor: textColor,
+        titleTextStyle: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          color: textColor,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: borderColor, width: 1.4),
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        iconColor: colorScheme.primary,
+        titleTextStyle: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+          color: textColor,
+        ),
+        subtitleTextStyle: TextStyle(
+          fontFamily: 'sans-serif',
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: mutedTextColor,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cardColor,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFF354361) : const Color(0xFFDDE5F6),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.6),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(64, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(64, 50),
+          side: BorderSide(color: borderColor, width: 1.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: isDark
+            ? const Color(0xFF233052)
+            : const Color(0xFFEFF3FF),
+        labelStyle: TextStyle(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w900,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
     );
   }

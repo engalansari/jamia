@@ -33,50 +33,61 @@ class HomeShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(strings.appName),
-        backgroundColor: const Color(0xFFF5F7FC),
         actions: [
+          IconButton(
+            tooltip: Theme.of(context).brightness == Brightness.dark
+                ? 'الثيم النهاري'
+                : 'الثيم الليلي',
+            onPressed: () => JamiaApp.toggleTheme(context),
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+          ),
           IconButton(
             tooltip: strings.languageTooltip,
             onPressed: () => JamiaApp.setLocale(context, nextLocale),
             icon: const Icon(Icons.language),
           ),
-          if (currentUser != null)
-            IconButton(
-              tooltip: strings.notifications,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      NotificationsPage(currentUser: currentUser!),
+          PopupMenuButton<_HomeMenuAction>(
+            tooltip: 'القائمة',
+            onSelected: (action) => _handleMenuAction(context, action, strings),
+            itemBuilder: (context) => [
+              if (currentUser != null)
+                PopupMenuItem(
+                  value: _HomeMenuAction.notifications,
+                  child: ListTile(
+                    leading: const Icon(Icons.notifications),
+                    title: Text(strings.notifications),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.notifications),
-            ),
-          if (currentUser != null)
-            IconButton(
-              tooltip: strings.searchAndLogs,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => SearchAndLogsPage(round: null),
+              if (currentUser != null)
+                PopupMenuItem(
+                  value: _HomeMenuAction.search,
+                  child: ListTile(
+                    leading: const Icon(Icons.search),
+                    title: Text(strings.searchAndLogs),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.search),
-            ),
-          if (currentUser?.isAdmin == true)
-            IconButton(
-              tooltip: strings.admin,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AdminPage(currentUser: currentUser!),
+              if (currentUser?.isAdmin == true)
+                PopupMenuItem(
+                  value: _HomeMenuAction.admin,
+                  child: ListTile(
+                    leading: const Icon(Icons.admin_panel_settings),
+                    title: Text(strings.admin),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.admin_panel_settings),
-            ),
-          if (currentUser != null)
-            IconButton(
-              tooltip: strings.signOut,
-              onPressed: AuthService().signOut,
-              icon: const Icon(Icons.logout),
-            ),
+              if (currentUser != null)
+                PopupMenuItem(
+                  value: _HomeMenuAction.signOut,
+                  child: ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: Text(strings.signOut),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
       body: SafeArea(
@@ -91,7 +102,44 @@ class HomeShell extends StatelessWidget {
       ),
     );
   }
+
+  void _handleMenuAction(
+    BuildContext context,
+    _HomeMenuAction action,
+    AppStrings strings,
+  ) {
+    switch (action) {
+      case _HomeMenuAction.notifications:
+        final user = currentUser;
+        if (user == null) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => NotificationsPage(currentUser: user),
+          ),
+        );
+        return;
+      case _HomeMenuAction.search:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const SearchAndLogsPage(round: null),
+          ),
+        );
+        return;
+      case _HomeMenuAction.admin:
+        final user = currentUser;
+        if (user == null) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => AdminPage(currentUser: user)),
+        );
+        return;
+      case _HomeMenuAction.signOut:
+        AuthService().signOut();
+        return;
+    }
+  }
 }
+
+enum _HomeMenuAction { notifications, search, admin, signOut }
 
 class _LiveRoundView extends StatelessWidget {
   const _LiveRoundView({required this.currentUser});

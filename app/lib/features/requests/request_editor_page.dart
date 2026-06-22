@@ -30,11 +30,19 @@ class RequestEditorPage extends StatefulWidget {
 
 class _RequestEditorPageState extends State<RequestEditorPage> {
   late bool _favoritesOnly;
+  final _search = TextEditingController();
+  String _activeSearchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _favoritesOnly = widget.favoritesOnly;
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   @override
@@ -88,18 +96,29 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
             stream: AdminDataService().watchCategories(),
             builder: (context, categoriesSnapshot) {
               final categories = categoriesSnapshot.data ?? const <Category>[];
-              final groups = _groupItemsByCategory(items, categories);
+              final visibleItems = _filterItems(items);
+              final groups = _groupItemsByCategory(visibleItems, categories);
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-                itemCount: groups.length + 1,
+                itemCount: groups.isEmpty ? 2 : groups.length + 1,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return _RequestEditorHeader(
                       round: widget.round,
                       favoritesOnly: _favoritesOnly,
+                      searchController: _search,
+                      hasActiveSearch: _activeSearchQuery.isNotEmpty,
+                      onSearch: _runSearch,
+                      onClearSearch: _clearSearch,
                       onFavoritesOnlyChanged: (value) =>
                           setState(() => _favoritesOnly = value),
+                    );
+                  }
+                  if (groups.isEmpty) {
+                    return const _RequestEditorMessage(
+                      message:
+                          'لا توجد منتجات مطابقة. اكتب اسم المنتج ثم اضغط بحث.',
                     );
                   }
 
@@ -221,17 +240,52 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
       );
     }
   }
+
+  List<GroceryItem> _filterItems(List<GroceryItem> items) {
+    final query = _normalizeSearchText(_activeSearchQuery);
+    if (query.isEmpty) return items;
+    return items.where((item) {
+      final searchable = _normalizeSearchText(
+        [
+          item.nameAr,
+          item.nameEn,
+          item.defaultUnit,
+          item.categoryId,
+          item.itemId,
+        ].join(' '),
+      );
+      return searchable.contains(query);
+    }).toList();
+  }
+
+  void _runSearch() {
+    FocusScope.of(context).unfocus();
+    setState(() => _activeSearchQuery = _search.text.trim());
+  }
+
+  void _clearSearch() {
+    _search.clear();
+    setState(() => _activeSearchQuery = '');
+  }
 }
 
 class _RequestEditorHeader extends StatelessWidget {
   const _RequestEditorHeader({
     required this.round,
     required this.favoritesOnly,
+    required this.searchController,
+    required this.hasActiveSearch,
+    required this.onSearch,
+    required this.onClearSearch,
     required this.onFavoritesOnlyChanged,
   });
 
   final ShoppingRound round;
   final bool favoritesOnly;
+  final TextEditingController searchController;
+  final bool hasActiveSearch;
+  final VoidCallback onSearch;
+  final VoidCallback onClearSearch;
   final ValueChanged<bool> onFavoritesOnlyChanged;
 
   @override
@@ -243,50 +297,95 @@ class _RequestEditorHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF9AAEF0), width: 1.2),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.event_note, color: Color(0xFF4F6198)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  round.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              const Icon(Icons.event_note, color: Color(0xFF4F6198)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      round.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      _formatArabicDateTime(round.createdAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
-                Text(
-                  _formatArabicDateTime(round.createdAt),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(width: 8),
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SegmentedButton<bool>(
-            showSelectedIcon: false,
-            style: SegmentedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            segments: const [
-              ButtonSegment(value: false, label: Text('الكل')),
-              ButtonSegment(value: true, label: Text('المفضلة')),
+                segments: const [
+                  ButtonSegment(value: false, label: Text('الكل')),
+                  ButtonSegment(value: true, label: Text('المفضلة')),
+                ],
+                selected: {favoritesOnly},
+                onSelectionChanged: (values) =>
+                    onFavoritesOnlyChanged(values.first),
+              ),
             ],
-            selected: {favoritesOnly},
-            onSelectionChanged: (values) =>
-                onFavoritesOnlyChanged(values.first),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: searchController,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => onSearch(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: hasActiveSearch
+                        ? IconButton(
+                            tooltip: 'مسح البحث',
+                            onPressed: onClearSearch,
+                            icon: const Icon(Icons.close),
+                          )
+                        : null,
+                    labelText: 'اسم المنتج',
+                    hintText: 'اكتب اسم المنتج',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: onSearch,
+                icon: const Icon(Icons.search),
+                label: const Text('بحث'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+String _normalizeSearchText(String value) {
+  return value
+      .toLowerCase()
+      .replaceAll('أ', 'ا')
+      .replaceAll('إ', 'ا')
+      .replaceAll('آ', 'ا')
+      .replaceAll('ة', 'ه')
+      .replaceAll('ى', 'ي')
+      .trim();
 }
 
 String _formatArabicDateTime(DateTime value) {

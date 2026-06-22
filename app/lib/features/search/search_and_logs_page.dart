@@ -8,6 +8,7 @@ import '../../core/models/shopping_round.dart';
 import '../../core/services/admin_data_service.dart';
 import '../../core/services/operation_log_service.dart';
 import '../../core/services/request_service.dart';
+import '../../core/services/round_service.dart';
 
 class SearchAndLogsPage extends StatelessWidget {
   const SearchAndLogsPage({super.key, required this.round});
@@ -52,6 +53,7 @@ class _RequestSearchTab extends StatefulWidget {
 
 class _RequestSearchTabState extends State<_RequestSearchTab> {
   final _search = TextEditingController();
+  String _activeSearchQuery = '';
   var _statusFilter = _SearchStatusFilter.all;
   String? _categoryId;
 
@@ -64,6 +66,16 @@ class _RequestSearchTabState extends State<_RequestSearchTab> {
   @override
   Widget build(BuildContext context) {
     final round = widget.round;
+    if (round == null) {
+      return StreamBuilder<ShoppingRound?>(
+        stream: RoundService().watchCurrentRound(),
+        builder: (context, snapshot) => _buildSearchContent(snapshot.data),
+      );
+    }
+    return _buildSearchContent(round);
+  }
+
+  Widget _buildSearchContent(ShoppingRound? round) {
     return StreamBuilder<List<Category>>(
       stream: AdminDataService().watchCategories(),
       builder: (context, categoriesSnapshot) {
@@ -71,14 +83,35 @@ class _RequestSearchTabState extends State<_RequestSearchTab> {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextField(
-              controller: _search,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-                labelText: 'بحث بالصنف أو المستخدم',
-              ),
-              onChanged: (_) => setState(() {}),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _activeSearchQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'مسح البحث',
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.close),
+                            ),
+                      labelText: 'اسم المنتج أو المستخدم',
+                      hintText: 'اكتب كلمة البحث',
+                    ),
+                    onSubmitted: (_) => _runSearch(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _runSearch,
+                  icon: const Icon(Icons.search),
+                  label: const Text('ابحث'),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
@@ -151,7 +184,7 @@ class _RequestSearchTabState extends State<_RequestSearchTab> {
   }
 
   List<ShoppingRequest> _filter(List<ShoppingRequest> requests) {
-    final query = _search.text.trim().toLowerCase();
+    final query = _normalizeSearchText(_activeSearchQuery);
     return requests.where((request) {
       final matchesStatus = switch (_statusFilter) {
         _SearchStatusFilter.all => true,
@@ -169,10 +202,21 @@ class _RequestSearchTabState extends State<_RequestSearchTab> {
         request.purchasedByName,
         request.purchasedBy,
         request.note,
-      ].whereType<String>().join(' ').toLowerCase();
-      final matchesQuery = query.isEmpty || searchableText.contains(query);
+      ].whereType<String>().join(' ');
+      final normalizedText = _normalizeSearchText(searchableText);
+      final matchesQuery = query.isEmpty || normalizedText.contains(query);
       return matchesStatus && matchesCategory && matchesQuery;
     }).toList();
+  }
+
+  void _runSearch() {
+    FocusScope.of(context).unfocus();
+    setState(() => _activeSearchQuery = _search.text.trim());
+  }
+
+  void _clearSearch() {
+    _search.clear();
+    setState(() => _activeSearchQuery = '');
   }
 }
 
@@ -290,6 +334,17 @@ class _EmptyState extends StatelessWidget {
 String _formatQuantity(double value) {
   if (value == value.roundToDouble()) return value.toInt().toString();
   return value.toStringAsFixed(2);
+}
+
+String _normalizeSearchText(String value) {
+  return value
+      .toLowerCase()
+      .replaceAll('أ', 'ا')
+      .replaceAll('إ', 'ا')
+      .replaceAll('آ', 'ا')
+      .replaceAll('ة', 'ه')
+      .replaceAll('ى', 'ي')
+      .trim();
 }
 
 String _formatTime(DateTime dateTime) {
