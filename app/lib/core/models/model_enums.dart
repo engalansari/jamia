@@ -31,6 +31,7 @@ enum NotificationType {
   requestDeleted,
   requestPurchased,
   roundOpened,
+  shoppingStarted,
   roundClosed,
   closingSoon,
   imageUpdated,

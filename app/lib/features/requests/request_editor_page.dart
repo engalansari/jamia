@@ -37,10 +37,12 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
   void initState() {
     super.initState();
     _favoritesOnly = widget.favoritesOnly;
+    _search.addListener(_updateSearchQuery);
   }
 
   @override
   void dispose() {
+    _search.removeListener(_updateSearchQuery);
     _search.dispose();
     super.dispose();
   }
@@ -263,9 +265,14 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
     setState(() => _activeSearchQuery = _search.text.trim());
   }
 
+  void _updateSearchQuery() {
+    final query = _search.text.trim();
+    if (query == _activeSearchQuery) return;
+    setState(() => _activeSearchQuery = query);
+  }
+
   void _clearSearch() {
     _search.clear();
-    setState(() => _activeSearchQuery = '');
   }
 }
 
@@ -358,8 +365,8 @@ class _RequestEditorHeader extends StatelessWidget {
                             icon: const Icon(Icons.close),
                           )
                         : null,
-                    labelText: 'اسم المنتج',
-                    hintText: 'اكتب اسم المنتج',
+                    labelText: 'بحث عن صنف',
+                    hintText: 'اكتب اسم الصنف',
                   ),
                 ),
               ),

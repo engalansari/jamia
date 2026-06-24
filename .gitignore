@@ -14,6 +14,7 @@ firebase-debug.log
 app/.dart_tool/
 app/build/
 app/.flutter-plugins-dependencies
+functions/node_modules/
 
 # IDE/user files
 app/.idea/

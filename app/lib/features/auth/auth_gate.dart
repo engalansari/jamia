@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/models/app_user.dart';
@@ -85,7 +86,9 @@ class _MessagingRegistrationState extends State<_MessagingRegistration> {
     super.didChangeDependencies();
     if (_isRegistered) return;
     _isRegistered = true;
-    MessagingService().registerDevice(widget.user);
+    if (!kIsWeb) {
+      MessagingService().registerDevice(widget.user);
+    }
   }
 
   @override

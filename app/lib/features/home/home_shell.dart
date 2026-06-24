@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/localization/app_strings.dart';
@@ -8,6 +9,7 @@ import '../../core/models/model_enums.dart';
 import '../../core/models/shopping_request.dart';
 import '../../core/models/shopping_round.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/messaging_service.dart';
 import '../../core/services/request_service.dart';
 import '../../core/services/round_service.dart';
 import '../../main.dart';
@@ -215,6 +217,10 @@ class _MainContent extends StatelessWidget {
         if (currentUser != null) ...[
           const SizedBox(height: 14),
           _UserBanner(currentUser: currentUser!, colorScheme: colorScheme),
+          if (kIsWeb) ...[
+            const SizedBox(height: 10),
+            _WebPushOptInCard(currentUser: currentUser!),
+          ],
         ],
         const SizedBox(height: 12),
         if (isLoadingRound)
@@ -293,6 +299,188 @@ class _UserBanner extends StatelessWidget {
           ),
           Chip(label: Text(currentUser.roleLabel)),
         ],
+      ),
+    );
+  }
+}
+
+class _WebPushOptInCard extends StatefulWidget {
+  const _WebPushOptInCard({required this.currentUser});
+
+  final AppUser currentUser;
+
+  @override
+  State<_WebPushOptInCard> createState() => _WebPushOptInCardState();
+}
+
+class _WebPushOptInCardState extends State<_WebPushOptInCard> {
+  var _isRegistering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fullWidth = constraints.maxWidth < 420;
+        final buttons = [
+          OutlinedButton.icon(
+            onPressed: _isRegistering ? null : _enableNotifications,
+            icon: _isRegistering
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.notifications_active_outlined),
+            label: const Text(
+              '\u062a\u0641\u0639\u064a\u0644 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a',
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _openNotificationSettings(context),
+            icon: const Icon(Icons.tune),
+            label: const Text(
+              '\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a',
+            ),
+          ),
+        ];
+
+        if (fullWidth) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final button in buttons) ...[
+                button,
+                if (button != buttons.last) const SizedBox(height: 8),
+              ],
+            ],
+          );
+        }
+
+        return Wrap(spacing: 8, runSpacing: 8, children: buttons);
+      },
+    );
+  }
+
+  Future<void> _enableNotifications() async {
+    setState(() => _isRegistering = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await MessagingService().registerDevice(
+        widget.currentUser,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_messageFor(result))));
+    } finally {
+      if (mounted) setState(() => _isRegistering = false);
+    }
+  }
+
+  Future<void> _openNotificationSettings(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) =>
+          _NotificationPreferencesSheet(currentUser: widget.currentUser),
+    );
+  }
+
+  String _messageFor(MessagingRegistrationResult result) {
+    switch (result) {
+      case MessagingRegistrationResult.registered:
+        return '\u062a\u0645 \u062a\u0641\u0639\u064a\u0644 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a.';
+      case MessagingRegistrationResult.missingWebPushKey:
+        return '\u064a\u062c\u0628 \u0625\u0636\u0627\u0641\u0629 \u0645\u0641\u062a\u0627\u062d Web Push \u0623\u0648\u0644\u0627.';
+      case MessagingRegistrationResult.permissionDenied:
+        return '\u062a\u0645 \u0631\u0641\u0636 \u0625\u0630\u0646 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a.';
+      case MessagingRegistrationResult.noToken:
+        return '\u0644\u0645 \u064a\u062a\u0645 \u0625\u0646\u0634\u0627\u0621 \u062a\u0648\u0643\u0646 \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a.';
+    }
+  }
+}
+
+class _NotificationPreferencesSheet extends StatelessWidget {
+  const _NotificationPreferencesSheet({required this.currentUser});
+
+  final AppUser currentUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final service = MessagingService();
+    return SafeArea(
+      child: StreamBuilder<NotificationPreferences>(
+        stream: service.watchNotificationPreferences(currentUser.userId),
+        builder: (context, snapshot) {
+          final preferences = snapshot.data ?? const NotificationPreferences();
+          return ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            children: [
+              Text(
+                '\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062a',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              _NotificationPreferenceSwitch(
+                title:
+                    '\u0625\u0634\u0639\u0627\u0631 \u0639\u0646\u062f \u0625\u0646\u0634\u0627\u0621 \u0637\u0644\u0628 \u062c\u062f\u064a\u062f',
+                keyLabel: 'TYPE KEY // REQUEST_CREATED',
+                value: preferences.requestCreated,
+                onChanged: (value) => service.saveNotificationPreferences(
+                  currentUser.userId,
+                  preferences.copyWith(requestCreated: value),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _NotificationPreferenceSwitch(
+                title:
+                    '\u0625\u0634\u0639\u0627\u0631 \u0639\u0646\u062f \u0628\u062f\u0621 \u0627\u0644\u062c\u0645\u0639\u064a\u0629',
+                keyLabel: 'TYPE KEY // SHOPPING_STARTED',
+                value: preferences.shoppingStarted,
+                onChanged: (value) => service.saveNotificationPreferences(
+                  currentUser.userId,
+                  preferences.copyWith(shoppingStarted: value),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NotificationPreferenceSwitch extends StatelessWidget {
+  const _NotificationPreferenceSwitch({
+    required this.title,
+    required this.keyLabel,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String keyLabel;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD8E0F6)),
+      ),
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(keyLabel),
       ),
     );
   }
@@ -466,10 +654,20 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final valueTextStyle =
+        (value.characters.length > 8
+                ? Theme.of(context).textTheme.titleSmall
+                : Theme.of(context).textTheme.titleMedium)
+            ?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF25345D),
+              height: 1.1,
+            );
+
     return SizedBox(
       width: width.clamp(92, 160),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 58),
+        constraints: const BoxConstraints(minHeight: 68),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
         decoration: BoxDecoration(
           color: const Color(0xFFF5F7FC),
@@ -477,22 +675,22 @@ class _Metric extends StatelessWidget {
           border: Border.all(color: const Color(0xFFD8E0F6)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               value,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF25345D),
-              ),
+              textAlign: TextAlign.center,
+              style: valueTextStyle,
             ),
+            const SizedBox(height: 2),
             Text(
               label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: const Color(0xFF5A6478),
                 fontWeight: FontWeight.w600,

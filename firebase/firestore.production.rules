@@ -22,6 +22,16 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isActiveUser();
       allow create, update, delete: if isAdmin();
+
+      match /pushTokens/{tokenId} {
+        allow read, create, update, delete: if isActiveUser()
+          && request.auth.uid == userId;
+      }
+
+      match /settings/{settingId} {
+        allow read, create, update, delete: if isActiveUser()
+          && request.auth.uid == userId;
+      }
     }
 
     match /categories/{document=**} {

@@ -85,8 +85,6 @@ class RoundService {
     if (existingRound != null && existingRound.isOpen) return existingRound;
     if (existingRound != null) {
       await closeRound(existingRound.roundId);
-      final carriedRound = await _currentOpenRound();
-      if (carriedRound != null && carriedRound.isOpen) return carriedRound;
     }
 
     final now = DateTime.now();
@@ -111,6 +109,11 @@ class RoundService {
       'closeAt': now.add(duration).toIso8601String(),
       'shoppingStartedAt': now.toIso8601String(),
     }, SetOptions(merge: true));
+    await _notificationService.notifyShoppingStarted(
+      user: startedBy,
+      roundId: openRound.roundId,
+      roundName: openRound.name,
+    );
   }
 
   Future<ShoppingRound> _createRound({
@@ -140,7 +143,10 @@ class RoundService {
     return round;
   }
 
-  Future<void> closeRound(String roundId) async {
+  Future<void> closeRound(
+    String roundId, {
+    bool carryOverNeededRequests = false,
+  }) async {
     final snapshot = await _rounds.doc(roundId).get();
     final round = snapshot.data() == null
         ? null
@@ -155,7 +161,9 @@ class RoundService {
         roundName: round.name,
         createdBy: round.createdBy,
       );
-      await _carryOverNeededRequests(round);
+      if (carryOverNeededRequests) {
+        await _carryOverNeededRequests(round);
+      }
     }
   }
 

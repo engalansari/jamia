@@ -50,7 +50,7 @@ class AdminPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            const _UsersTab(),
+            _UsersTab(currentUser: currentUser),
             const _CategoriesTab(),
             const _UnitsTab(),
             const _ItemsTab(),
@@ -63,7 +63,9 @@ class AdminPage extends StatelessWidget {
 }
 
 class _UsersTab extends StatelessWidget {
-  const _UsersTab();
+  const _UsersTab({required this.currentUser});
+
+  final AppUser currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +123,15 @@ class _UsersTab extends StatelessWidget {
                         value ? UserStatus.active : UserStatus.disabled,
                       ),
                     ),
+                    if (user.userId != currentUser.userId)
+                      IconButton(
+                        tooltip: '\u062d\u0630\u0641 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645',
+                        onPressed: () => _deleteUser(context, user),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -128,6 +139,55 @@ class _UsersTab extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _deleteUser(BuildContext context, AppUser user) async {
+    final displayName = user.displayName.isEmpty
+        ? '@${user.username}'
+        : user.displayName;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('\u062d\u0630\u0641 \u0645\u0633\u062a\u062e\u062f\u0645'),
+        content: Text(
+          '\u0647\u0644 \u062a\u0631\u064a\u062f \u062d\u0630\u0641 $displayName\u061f',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('\u0625\u0644\u063a\u0627\u0621'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('\u062d\u0630\u0641'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await AdminDataService().deleteUser(user);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('\u062a\u0645 \u062d\u0630\u0641 $displayName.'),
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            '\u062a\u0639\u0630\u0631 \u062d\u0630\u0641 \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645. \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _showUserDialog(BuildContext context) async {

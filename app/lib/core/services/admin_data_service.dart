@@ -94,6 +94,10 @@ class AdminDataService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> deleteUser(AppUser user) {
+    return _firestore.collection('users').doc(user.userId).delete();
+  }
+
   Stream<List<Category>> watchCategories() {
     return _firestore.collection('categories').snapshots().map((snapshot) {
       final categories = snapshot.docs

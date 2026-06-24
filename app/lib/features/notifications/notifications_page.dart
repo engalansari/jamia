@@ -71,6 +71,8 @@ IconData _notificationIcon(NotificationType type) {
       return Icons.check_circle_outline;
     case NotificationType.roundOpened:
       return Icons.storefront;
+    case NotificationType.shoppingStarted:
+      return Icons.timer;
     case NotificationType.roundClosed:
     case NotificationType.closingSoon:
       return Icons.timer_off;

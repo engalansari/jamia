@@ -135,6 +135,20 @@ class NotificationService {
     );
   }
 
+  Future<void> notifyShoppingStarted({
+    required AppUser user,
+    required String roundId,
+    required String roundName,
+  }) {
+    return createNotification(
+      title: '\u0628\u062f\u0621 \u0627\u0644\u062c\u0645\u0639\u064a\u0629',
+      body: '${user.displayName} \u0628\u062f\u0623 $roundName',
+      type: NotificationType.shoppingStarted,
+      createdBy: user.userId,
+      roundId: roundId,
+    );
+  }
+
   Future<void> notifyRoundClosed({
     required String roundId,
     required String roundName,
