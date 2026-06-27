@@ -109,8 +109,15 @@ class _JamiaAppState extends State<JamiaApp> {
         ? const Color(0xFFF3F6FF)
         : const Color(0xFF111827);
     final mutedTextColor = isDark
-        ? const Color(0xFFB9C4DB)
-        : const Color(0xFF7D8AA2);
+        ? const Color(0xFF9BA8C4)
+        : const Color(0xFF4F5C7D);
+
+    // نص الأزرار - قوي وسميك جداً
+    const buttonTextStyle = TextStyle(
+      fontWeight: FontWeight.w900,
+      fontSize: 16,
+      letterSpacing: 0.5,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -123,6 +130,98 @@ class _JamiaAppState extends State<JamiaApp> {
             fontFamily: 'sans-serif',
             bodyColor: textColor,
             displayColor: textColor,
+          )
+          .copyWith(
+            displayLarge: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: textColor,
+            ),
+            displayMedium: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: textColor,
+            ),
+            displaySmall: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: textColor,
+            ),
+            headlineLarge: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            headlineMedium: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            headlineSmall: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            titleLarge: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: textColor,
+            ),
+            titleMedium: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            titleSmall: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            bodyLarge: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+            bodyMedium: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+            bodySmall: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: mutedTextColor,
+            ),
+            labelLarge: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            labelMedium: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+            labelSmall: TextStyle(
+              fontFamily: 'sans-serif',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: mutedTextColor,
+            ),
           ),
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -132,7 +231,7 @@ class _JamiaAppState extends State<JamiaApp> {
         foregroundColor: textColor,
         titleTextStyle: TextStyle(
           fontFamily: 'sans-serif',
-          fontSize: 20,
+          fontSize: 22,
           fontWeight: FontWeight.w900,
           color: textColor,
         ),
@@ -150,14 +249,14 @@ class _JamiaAppState extends State<JamiaApp> {
         iconColor: colorScheme.primary,
         titleTextStyle: TextStyle(
           fontFamily: 'sans-serif',
-          fontSize: 17,
-          fontWeight: FontWeight.w900,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
           color: textColor,
         ),
         subtitleTextStyle: TextStyle(
           fontFamily: 'sans-serif',
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: mutedTextColor,
         ),
       ),
@@ -175,25 +274,50 @@ class _JamiaAppState extends State<JamiaApp> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.primary, width: 1.6),
         ),
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: mutedTextColor,
+        ),
+        hintStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: mutedTextColor,
+        ),
       ),
+      // ⭐ تحسين الأزرار الممتلئة (FilledButton)
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(64, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w900),
+          textStyle: buttonTextStyle,
         ),
       ),
+      // ⭐ تحسين الأزرار المخطط (OutlinedButton)
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           side: BorderSide(color: borderColor, width: 1.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w900),
+          textStyle: buttonTextStyle,
         ),
+      ),
+      // ⭐ تحسين الأزرار النصية (TextButton)
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: buttonTextStyle,
+        ),
+      ),
+      // ⭐ تحسين الزر العائم (FloatingActionButton)
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        sizeConstraints: const BoxConstraints.tightFor(width: 56, height: 56),
+        elevation: 8,
+        highlightElevation: 12,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: isDark
@@ -201,7 +325,8 @@ class _JamiaAppState extends State<JamiaApp> {
             : const Color(0xFFEFF3FF),
         labelStyle: TextStyle(
           color: colorScheme.primary,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
