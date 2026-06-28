@@ -1,0 +1,12 @@
+{
+  "name": "jamia-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "C:\\Progra~1\\nodejs\\node.exe firestore-storage-rules.test.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.0.0"
+  }
+}

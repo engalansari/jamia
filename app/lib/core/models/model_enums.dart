@@ -6,7 +6,7 @@ enum RoundStatus { open, closed }
 
 enum RequestPriority { normal, medium, important }
 
-enum RequestStatus { needed, purchased, unavailable }
+enum RequestStatus { needed, purchased, unavailable, newList }
 
 enum LogActionType {
   userCreated,

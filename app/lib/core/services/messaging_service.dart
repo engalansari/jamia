@@ -89,6 +89,10 @@ class MessagingService {
     return _messaging.requestPermission(alert: true, badge: true, sound: true);
   }
 
+  Future<NotificationSettings> getNotificationSettings() {
+    return _messaging.getNotificationSettings();
+  }
+
   Future<String?> getToken() {
     return _messaging.getToken(
       vapidKey: kIsWeb ? _webPushVapidKey : null,

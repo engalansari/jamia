@@ -75,6 +75,22 @@ class NotificationService {
     );
   }
 
+  Future<void> notifyRequestAddSessionStarted({
+    required AppUser user,
+    required ShoppingRequest request,
+  }) {
+    return createNotification(
+      title: '\u0628\u062f\u0621 \u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628',
+      body:
+          '${user.displayName} \u0628\u062f\u0623 \u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628\u0627\u062a \u0627\u0644\u062c\u0645\u0639\u064a\u0629',
+      type: NotificationType.requestCreated,
+      createdBy: user.userId,
+      roundId: request.roundId,
+      requestId: request.requestId,
+      itemName: request.itemName,
+    );
+  }
+
   Future<void> notifyRequestUpdated({
     required AppUser user,
     required ShoppingRequest request,

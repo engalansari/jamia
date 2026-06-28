@@ -143,6 +143,42 @@
 - [x] Improve internal UI styling and typography
 - [x] Apply blue mobile operations inspired theme
 
+## Stage 15: Production security rules
+- [x] Review Firestore and Storage production rule drafts
+- [x] Add explicit production Firebase config for rule validation
+- [x] Allow regular users to update only their own lastLogin field
+- [x] Align operation log collection name with production rules
+- [x] Align request image uploads with the production Storage path
+- [x] Validate production Firestore and Storage rules with Firebase emulators
+- [x] Test full admin flow against staging or emulator
+- [x] Test regular user flow against staging or emulator
+- [x] Tighten request ownership, purchase, delete, and image-upload rules
+- [x] Deploy production Firestore rules
+- [x] Deploy production Storage rules
+- [x] Build and install updated Android APK after production rules deployment
+- [x] Smoke-test updated Android app launch on phone after production rules deployment
+- [ ] Get explicit approval before starting any further phone-version work
+- [ ] Test production rules from Android phone after deployment
+
+## Stage 16: Design and workflow adjustments
+- [x] Improve faded/low-contrast fonts across the app
+- [x] Change the general app background to white
+- [x] Remove the home-screen user info square/card
+- [x] Add a top-right circular user badge showing the username or first initial
+- [x] Move the theme/design option into the hamburger menu
+- [x] Add a hamburger-menu option for choosing background colors
+- [x] Review and redesign the notification settings list
+- [x] Make the notification enable button clearly show whether notifications are enabled
+- [x] Move the notification enable/control UI to the right place after redesign
+- [x] Add an option to close/cancel the selected "I am at the co-op" time
+- [x] Send a notification when the user chooses the "I am at the co-op" time
+- [x] Fix request-add notifications so only the first request in a new add session sends a notification
+- [x] Stop sending a notification for every later item added in the same request-add session
+- [x] Add a practical confirmation dialog before canceling/deleting an item from the purchase list by swipe
+- [x] Make purchase-list swipe cancel work clearly to the right and left without accidental deletion
+- [x] Investigate and improve the delay when adding an item
+- [x] Do not start phone-version work for these design changes without explicit approval
+
 
 
 

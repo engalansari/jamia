@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "rules": "firebase/firestore.production.rules"
+  },
+  "storage": {
+    "rules": "firebase/storage.production.rules"
+  }
+}

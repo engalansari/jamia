@@ -19,7 +19,7 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> get requests =>
       _firestore.collection('requests');
   CollectionReference<Map<String, dynamic>> get logs =>
-      _firestore.collection('logs');
+      _firestore.collection('operationLogs');
   CollectionReference<Map<String, dynamic>> get notifications =>
       _firestore.collection('notifications');
 }

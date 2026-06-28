@@ -10,6 +10,7 @@ import '../../core/models/model_enums.dart';
 import '../../core/models/shopping_request.dart';
 import '../../core/models/shopping_round.dart';
 import '../../core/services/admin_data_service.dart';
+import '../../core/services/in_app_alert_service.dart';
 import '../../core/services/request_service.dart';
 
 class RequestEditorPage extends StatefulWidget {
@@ -32,6 +33,7 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
   late bool _favoritesOnly;
   final _search = TextEditingController();
   String _activeSearchQuery = '';
+  var _hasSentAddSessionNotification = false;
 
   @override
   void initState() {
@@ -201,6 +203,9 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
     );
     if (result == null || !context.mounted) return;
 
+    final targetStatus = _targetRequestStatus();
+    final isLate = targetStatus == RequestStatus.newList;
+    final sendNotification = !isLate && _shouldSendAddSessionNotification();
     await RequestService().addRequest(
       roundId: widget.round.roundId,
       item: item,
@@ -211,12 +216,24 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
       note: result.note,
       imageBytes: result.imageBytes,
       imageContentType: result.imageContentType,
+      sendNotification: sendNotification,
+      targetStatus: targetStatus,
     );
+    if (isLate) {
+      await InAppAlertService().notifyLateRequestAdded(
+        round: widget.round,
+        addedBy: widget.currentUser,
+        item: item,
+      );
+    }
+    _markAddSessionNotificationSent(sendNotification);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          '\u062a\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u0637\u0644\u0628.',
+          isLate
+              ? '\u062a\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0628\u0642\u0627\u0626\u0645\u0629 \u062c\u062f\u064a\u062f\u0629.'
+              : '\u062a\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u0637\u0644\u0628.',
         ),
       ),
     );
@@ -225,6 +242,9 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
   Future<void> _addQuickRequest(BuildContext context, GroceryItem item) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      final targetStatus = _targetRequestStatus();
+      final isLate = targetStatus == RequestStatus.newList;
+      final sendNotification = !isLate && _shouldSendAddSessionNotification();
       await RequestService().addRequest(
         roundId: widget.round.roundId,
         item: item,
@@ -232,7 +252,27 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
         unit: item.defaultUnit,
         priority: RequestPriority.normal,
         requestedBy: widget.currentUser,
+        sendNotification: sendNotification,
+        targetStatus: targetStatus,
       );
+      if (isLate) {
+        await InAppAlertService().notifyLateRequestAdded(
+          round: widget.round,
+          addedBy: widget.currentUser,
+          item: item,
+        );
+      }
+      _markAddSessionNotificationSent(sendNotification);
+      if (isLate) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              '\u062a\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0628\u0642\u0627\u0626\u0645\u0629 \u062c\u062f\u064a\u062f\u0629.',
+            ),
+          ),
+        );
+        return;
+      }
       messenger.showSnackBar(
         SnackBar(content: Text('تمت إضافة ${item.nameAr} إلى القائمة.')),
       );
@@ -273,6 +313,18 @@ class _RequestEditorPageState extends State<RequestEditorPage> {
 
   void _clearSearch() {
     _search.clear();
+  }
+
+  bool _shouldSendAddSessionNotification() => !_hasSentAddSessionNotification;
+
+  void _markAddSessionNotificationSent(bool wasSent) {
+    if (wasSent) _hasSentAddSessionNotification = true;
+  }
+
+  RequestStatus _targetRequestStatus() {
+    return widget.round.isShoppingWindowExpired
+        ? RequestStatus.newList
+        : RequestStatus.needed;
   }
 }
 

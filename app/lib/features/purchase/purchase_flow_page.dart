@@ -18,120 +18,179 @@ class PurchaseFlowPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('المطلوب شرائه'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.list_alt), text: 'المطلوب'),
-              Tab(icon: Icon(Icons.shopping_bag), text: 'تم شراؤه'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          '\u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u0634\u0631\u0627\u0624\u0647',
+        ),
+      ),
+      body: StreamBuilder<List<ShoppingRequest>>(
+        stream: RequestService().watchRoundRequests(roundId: round.roundId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final allGroups = _groupRequests(snapshot.data ?? const []);
+          final neededGroups = allGroups
+              .where((group) => group.status == RequestStatus.needed)
+              .toList();
+          final newListGroups = allGroups
+              .where((group) => group.status == RequestStatus.newList)
+              .toList();
+          final purchasedGroups = allGroups
+              .where((group) => group.status == RequestStatus.purchased)
+              .toList();
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
+            children: [
+              _PurchaseSection(
+                title:
+                    '\u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u0634\u0631\u0627\u0624\u0647',
+                emptyText:
+                    '\u0644\u0627 \u062a\u0648\u062c\u062f \u0637\u0644\u0628\u0627\u062a \u0645\u0637\u0644\u0648\u0628\u0629 \u062d\u0627\u0644\u064a\u0627.',
+                icon: Icons.shopping_cart_outlined,
+                groups: neededGroups,
+                builder: (group) => _PurchaseRequestTile(
+                  group: group,
+                  currentUser: currentUser,
+                  canToggle: round.isOpen,
+                  purchasedStyle: false,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _PurchaseSection(
+                title:
+                    '\u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629',
+                emptyText:
+                    '\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u0635\u0646\u0627\u0641 \u0641\u064a \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u062c\u062f\u064a\u062f\u0629.',
+                icon: Icons.playlist_add_check,
+                groups: newListGroups,
+                builder: (group) => _PurchaseRequestTile(
+                  group: group,
+                  currentUser: currentUser,
+                  canToggle: false,
+                  purchasedStyle: false,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _PurchaseSection(
+                title: '\u062a\u0645 \u0634\u0631\u0627\u0624\u0647',
+                emptyText:
+                    '\u0644\u0645 \u064a\u062a\u0645 \u0634\u0631\u0627\u0621 \u0623\u064a \u0637\u0644\u0628 \u062d\u062a\u0649 \u0627\u0644\u0622\u0646.',
+                icon: Icons.check_circle_outline,
+                groups: purchasedGroups,
+                builder: (group) => _PurchaseRequestTile(
+                  group: group,
+                  currentUser: currentUser,
+                  canToggle: round.isOpen,
+                  purchasedStyle: true,
+                ),
+              ),
             ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _RequestStatusList(
-              round: round,
-              currentUser: currentUser,
-              status: RequestStatus.needed,
-            ),
-            _RequestStatusList(
-              round: round,
-              currentUser: currentUser,
-              status: RequestStatus.purchased,
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-class _RequestStatusList extends StatelessWidget {
-  const _RequestStatusList({
-    required this.round,
-    required this.currentUser,
-    required this.status,
+class _PurchaseSection extends StatelessWidget {
+  const _PurchaseSection({
+    required this.title,
+    required this.emptyText,
+    required this.icon,
+    required this.groups,
+    required this.builder,
   });
 
-  final ShoppingRound round;
-  final AppUser currentUser;
-  final RequestStatus status;
-
-  bool get isNeededList => status == RequestStatus.needed;
+  final String title;
+  final String emptyText;
+  final IconData icon;
+  final List<_ShoppingRequestGroup> groups;
+  final Widget Function(_ShoppingRequestGroup group) builder;
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<ShoppingRequest>>(
-      stream: RequestService().watchRoundRequests(
-        roundId: round.roundId,
-        status: status,
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final groups = _groupRequests(snapshot.data ?? const []);
-        if (groups.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
-                isNeededList
-                    ? 'لا توجد طلبات مطلوبة حاليا.'
-                    : 'لم يتم شراء أي طلب حتى الآن.',
-                textAlign: TextAlign.center,
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
             ),
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: groups.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final group = groups[index];
-            final tile = _PurchaseRequestTile(
-              group: group,
-              currentUser: currentUser,
-              canPurchase: isNeededList && round.isOpen,
-            );
-            if (!isNeededList || !round.isOpen) return tile;
-            return Dismissible(
-              key: ValueKey('purchase-group-${group.key}'),
-              direction: DismissDirection.horizontal,
-              background: const _DeleteSwipeBackground(
-                alignment: Alignment.centerLeft,
-              ),
-              secondaryBackground: const _DeleteSwipeBackground(
-                alignment: Alignment.centerRight,
-              ),
-              confirmDismiss: (_) => _deleteGroup(context, group),
-              child: tile,
-            );
-          },
-        );
-      },
+            Chip(label: Text(groups.length.toString())),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (groups.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD8E0F6)),
+            ),
+            child: Text(emptyText, textAlign: TextAlign.center),
+          )
+        else
+          ..._buildCategoryGroups(),
+      ],
     );
   }
 
-  Future<bool> _deleteGroup(
-    BuildContext context,
-    _ShoppingRequestGroup group,
-  ) async {
-    for (final request in group.requests) {
-      await RequestService().deleteRequest(
-        request: request,
-        deletedBy: currentUser,
-      );
+  List<Widget> _buildCategoryGroups() {
+    final widgets = <Widget>[];
+    String? currentCategory;
+    for (final group in groups) {
+      final category = group.categoryTitle;
+      if (category != currentCategory) {
+        currentCategory = category;
+        widgets.add(_CategoryHeader(title: category));
+      }
+      widgets.add(builder(group));
+      widgets.add(const SizedBox(height: 8));
     }
-    if (!context.mounted) return true;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('تم إلغاء ${group.itemName}.')));
-    return true;
+    return widgets;
+  }
+}
+
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 6, 2, 6),
+      child: Row(
+        children: [
+          const Icon(Icons.category_outlined, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -139,12 +198,14 @@ class _PurchaseRequestTile extends StatefulWidget {
   const _PurchaseRequestTile({
     required this.group,
     required this.currentUser,
-    required this.canPurchase,
+    required this.canToggle,
+    required this.purchasedStyle,
   });
 
   final _ShoppingRequestGroup group;
   final AppUser currentUser;
-  final bool canPurchase;
+  final bool canToggle;
+  final bool purchasedStyle;
 
   @override
   State<_PurchaseRequestTile> createState() => _PurchaseRequestTileState();
@@ -156,26 +217,75 @@ class _PurchaseRequestTileState extends State<_PurchaseRequestTile> {
   @override
   Widget build(BuildContext context) {
     final group = widget.group;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: _RequestImage(
-        imageUrl: group.imageUrl,
-        priority: group.highestPriority,
+    final colorScheme = Theme.of(context).colorScheme;
+    final isPurchased = widget.purchasedStyle;
+    return Material(
+      color: Colors.white,
+      elevation: isPurchased ? 0 : 1,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: widget.canToggle && !_isSaving ? () => _toggle(context) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              _RequestImage(
+                imageUrl: group.imageUrl,
+                priority: group.highestPriority,
+                muted: isPurchased,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.itemName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        decoration: isPurchased
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                        color: isPurchased
+                            ? colorScheme.onSurfaceVariant
+                            : colorScheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      _subtitle(group),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        decoration: isPurchased
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_isSaving)
+                const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(
+                  isPurchased
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: isPurchased
+                      ? Colors.green.shade700
+                      : colorScheme.primary,
+                ),
+            ],
+          ),
+        ),
       ),
-      title: Text(group.itemName),
-      subtitle: Text(_subtitle(group)),
-      trailing: widget.canPurchase
-          ? FilledButton.icon(
-              onPressed: _isSaving ? null : () => _markPurchased(context),
-              icon: _isSaving
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check),
-              label: const Text('تم'),
-            )
-          : const Icon(Icons.check_circle, color: Colors.green),
     );
   }
 
@@ -188,40 +298,53 @@ class _PurchaseRequestTileState extends State<_PurchaseRequestTile> {
       parts.add(group.note!.trim());
     }
     if (group.requests.length > 1) {
-      parts.add('مجموع ${group.requests.length} طلبات');
+      parts.add(
+        '\u0645\u062c\u0645\u0648\u0639 ${group.requests.length} \u0637\u0644\u0628\u0627\u062a',
+      );
     }
     if (group.isPurchased) {
       final purchaser =
           group.requests.first.purchasedByName ??
           group.requests.first.purchasedBy;
-      if (purchaser?.isNotEmpty == true) parts.add('اشتراه: $purchaser');
+      if (purchaser?.isNotEmpty == true) {
+        parts.add('\u0627\u0634\u062a\u0631\u0627\u0647: $purchaser');
+      }
       final purchasedAt = group.requests.first.purchasedAt;
       if (purchasedAt != null) {
-        parts.add('وقت الشراء: ${_formatTime(purchasedAt)}');
-      }
-    }
-    return parts.join(' • ');
-  }
-
-  Future<void> _markPurchased(BuildContext context) async {
-    setState(() => _isSaving = true);
-    try {
-      for (final request in widget.group.requests) {
-        await RequestService().markPurchased(
-          request: request,
-          purchasedBy: widget.currentUser,
+        parts.add(
+          '\u0648\u0642\u062a \u0627\u0644\u0634\u0631\u0627\u0621: ${_formatTime(purchasedAt)}',
         );
       }
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم نقل ${widget.group.itemName} إلى المشتريات.'),
-        ),
-      );
+    }
+    return parts.join(' - ');
+  }
+
+  Future<void> _toggle(BuildContext context) async {
+    setState(() => _isSaving = true);
+    try {
+      if (widget.purchasedStyle) {
+        for (final request in widget.group.requests) {
+          await RequestService().markNeeded(
+            request: request,
+            updatedBy: widget.currentUser,
+          );
+        }
+      } else {
+        for (final request in widget.group.requests) {
+          await RequestService().markPurchased(
+            request: request,
+            purchasedBy: widget.currentUser,
+          );
+        }
+      }
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تحديث الطلب. حاول مرة أخرى.')),
+        const SnackBar(
+          content: Text(
+            '\u062a\u0639\u0630\u0631 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u0637\u0644\u0628. \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -230,44 +353,36 @@ class _PurchaseRequestTileState extends State<_PurchaseRequestTile> {
 }
 
 class _RequestImage extends StatelessWidget {
-  const _RequestImage({required this.imageUrl, required this.priority});
+  const _RequestImage({
+    required this.imageUrl,
+    required this.priority,
+    required this.muted,
+  });
 
   final String? imageUrl;
   final RequestPriority priority;
+  final bool muted;
 
   @override
   Widget build(BuildContext context) {
     final icon = _priorityIcon(priority);
-    final color = _priorityColor(priority);
+    final color = muted ? Colors.grey : _priorityColor(priority);
     if (imageUrl == null || imageUrl!.isEmpty) {
       return CircleAvatar(child: Icon(icon, color: color));
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        imageUrl!,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) =>
-            CircleAvatar(child: Icon(icon, color: color)),
+    return Opacity(
+      opacity: muted ? 0.55 : 1,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imageUrl!,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) =>
+              CircleAvatar(child: Icon(icon, color: color)),
+        ),
       ),
-    );
-  }
-}
-
-class _DeleteSwipeBackground extends StatelessWidget {
-  const _DeleteSwipeBackground({required this.alignment});
-
-  final Alignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      color: Colors.red.shade600,
-      child: const Icon(Icons.delete, color: Colors.white),
     );
   }
 }
@@ -284,6 +399,15 @@ class _ShoppingRequestGroup {
   String? get note => first.note;
   String? get imageUrl => first.thumbnailUrl ?? first.imageUrl;
   bool get isPurchased => first.isPurchased;
+  RequestStatus get status => first.status;
+  String get categoryTitle {
+    final name = first.categoryName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final id = first.categoryId?.trim();
+    if (id != null && id.isNotEmpty) return id;
+    return '\u0628\u062f\u0648\u0646 \u0642\u0633\u0645';
+  }
+
   double get quantity =>
       requests.fold(0, (sum, request) => sum + request.quantity);
 
@@ -301,13 +425,18 @@ class _ShoppingRequestGroup {
 List<_ShoppingRequestGroup> _groupRequests(List<ShoppingRequest> requests) {
   final grouped = <String, List<ShoppingRequest>>{};
   for (final request in requests) {
-    final key = '${request.itemId}-${request.unit}-${request.status.name}';
+    final key =
+        '${request.categoryId ?? ''}-${request.itemId}-${request.unit}-${request.status.name}';
     grouped.putIfAbsent(key, () => <ShoppingRequest>[]).add(request);
   }
   final groups = grouped.values
       .map((requests) => _ShoppingRequestGroup(requests: requests))
       .toList();
-  groups.sort((a, b) => a.itemName.compareTo(b.itemName));
+  groups.sort((a, b) {
+    final categoryCompare = a.categoryTitle.compareTo(b.categoryTitle);
+    if (categoryCompare != 0) return categoryCompare;
+    return a.itemName.compareTo(b.itemName);
+  });
   return groups;
 }
 
@@ -336,11 +465,11 @@ String _formatTime(DateTime dateTime) {
 String _priorityLabel(RequestPriority priority) {
   switch (priority) {
     case RequestPriority.important:
-      return 'مهم';
+      return '\u0645\u0647\u0645';
     case RequestPriority.medium:
-      return 'متوسط';
+      return '\u0645\u062a\u0648\u0633\u0637';
     case RequestPriority.normal:
-      return 'عادي';
+      return '\u0639\u0627\u062f\u064a';
   }
 }
 

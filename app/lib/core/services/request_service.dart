@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,6 +34,8 @@ class RequestService {
       _firestore.collection('items');
   CollectionReference<Map<String, dynamic>> get _requests =>
       _firestore.collection('requests');
+  CollectionReference<Map<String, dynamic>> get _requestAddSessions =>
+      _firestore.collection('requestAddSessions');
   CollectionReference<Map<String, dynamic>> get _units =>
       _firestore.collection('units');
 
@@ -86,30 +89,47 @@ class RequestService {
     String? note,
     Uint8List? imageBytes,
     String? imageContentType,
+    bool sendNotification = true,
+    RequestStatus targetStatus = RequestStatus.needed,
   }) async {
-    final existingSnapshot = await _requests
-        .where('roundId', isEqualTo: roundId)
-        .where('itemId', isEqualTo: item.itemId)
-        .where('status', isEqualTo: RequestStatus.needed.name)
-        .limit(1)
-        .get();
-    final doc = existingSnapshot.docs.isEmpty
-        ? _requests.doc()
-        : existingSnapshot.docs.first.reference;
+    final directDoc = _requests.doc(
+      _requestDocId(
+        roundId: roundId,
+        userId: requestedBy.userId,
+        itemId: item.itemId,
+        status: targetStatus,
+      ),
+    );
+    final directSnapshot = await directDoc.get();
+    final existingSnapshot = directSnapshot.exists
+        ? null
+        : await _requests
+              .where('roundId', isEqualTo: roundId)
+              .where('itemId', isEqualTo: item.itemId)
+              .where('status', isEqualTo: targetStatus.name)
+              .where('requestedBy', isEqualTo: requestedBy.userId)
+              .limit(1)
+              .get();
+    final existingDoc = directSnapshot.exists
+        ? directSnapshot
+        : existingSnapshot!.docs.isEmpty
+        ? null
+        : existingSnapshot.docs.first;
+    final doc = existingDoc?.reference ?? directDoc;
     final now = DateTime.now();
     final uploadedImageUrl = imageBytes == null
         ? null
         : await _storageService.uploadRequestImage(
+            userId: requestedBy.userId,
             requestId: doc.id,
             bytes: imageBytes,
             contentType: imageContentType ?? 'image/jpeg',
           );
-    final categoryName = await _categoryName(item.categoryId);
     final imageUrl = uploadedImageUrl ?? item.defaultImageUrl;
-    if (existingSnapshot.docs.isNotEmpty) {
+    if (existingDoc != null) {
       final existing = ShoppingRequest.fromJson({
-        ...existingSnapshot.docs.first.data(),
-        'requestId': existingSnapshot.docs.first.id,
+        ...existingDoc.data()!,
+        'requestId': existingDoc.id,
       });
       final updatedQuantity = existing.quantity + quantity;
       final data = <String, dynamic>{
@@ -146,16 +166,22 @@ class RequestService {
         purchasedByName: existing.purchasedByName,
         purchasedAt: existing.purchasedAt,
       );
-      await _logService.recordRequestAction(
-        actionType: LogActionType.requestUpdated,
-        user: requestedBy,
-        request: updatedRequest,
-        details: 'تم جمع كمية الصنف مع الطلب الموجود',
+      _runInBackground(
+        _logService.recordRequestAction(
+          actionType: LogActionType.requestUpdated,
+          user: requestedBy,
+          request: updatedRequest,
+          details: 'تم جمع كمية الصنف مع الطلب الموجود',
+        ),
       );
-      await _notificationService.notifyRequestUpdated(
-        user: requestedBy,
-        request: updatedRequest,
-      );
+      if (sendNotification) {
+        _runInBackground(
+          _notifyRequestAddSessionStartedOnce(
+            user: requestedBy,
+            request: updatedRequest,
+          ),
+        );
+      }
       return;
     }
 
@@ -165,7 +191,6 @@ class RequestService {
       itemId: item.itemId,
       itemName: item.nameAr,
       categoryId: item.categoryId,
-      categoryName: categoryName,
       quantity: quantity,
       unit: unit,
       priority: priority,
@@ -173,22 +198,28 @@ class RequestService {
       requestedBy: requestedBy.userId,
       requestedByName: requestedBy.displayName,
       requestedAt: now,
-      status: RequestStatus.needed,
+      status: targetStatus,
       imageUrl: imageUrl,
       thumbnailUrl: imageUrl,
     );
     await doc.set(request.toJson());
-    await _logService.recordRequestAction(
-      actionType: LogActionType.requestCreated,
-      user: requestedBy,
-      request: request,
-      details:
-          '\u062a\u0645\u062a \u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628 \u062c\u062f\u064a\u062f',
+    _runInBackground(
+      _logService.recordRequestAction(
+        actionType: LogActionType.requestCreated,
+        user: requestedBy,
+        request: request,
+        details:
+            '\u062a\u0645\u062a \u0625\u0636\u0627\u0641\u0629 \u0637\u0644\u0628 \u062c\u062f\u064a\u062f',
+      ),
     );
-    await _notificationService.notifyRequestCreated(
-      user: requestedBy,
-      request: request,
-    );
+    if (sendNotification) {
+      _runInBackground(
+        _notifyRequestAddSessionStartedOnce(
+          user: requestedBy,
+          request: request,
+        ),
+      );
+    }
   }
 
   Future<void> updateRequest({
@@ -204,6 +235,7 @@ class RequestService {
     final uploadedImageUrl = imageBytes == null
         ? null
         : await _storageService.uploadRequestImage(
+            userId: updatedBy.userId,
             requestId: request.requestId,
             bytes: imageBytes,
             contentType: imageContentType ?? 'image/jpeg',
@@ -296,6 +328,47 @@ class RequestService {
     await _notificationService.notifyRequestPurchased(
       user: purchasedBy,
       request: purchasedRequest,
+    );
+  }
+
+  Future<void> markNeeded({
+    required ShoppingRequest request,
+    required AppUser updatedBy,
+  }) async {
+    await _requests.doc(request.requestId).set({
+      'status': RequestStatus.needed.name,
+      'purchasedBy': FieldValue.delete(),
+      'purchasedByName': FieldValue.delete(),
+      'purchasedAt': FieldValue.delete(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    }, SetOptions(merge: true));
+
+    final neededRequest = ShoppingRequest(
+      requestId: request.requestId,
+      roundId: request.roundId,
+      itemId: request.itemId,
+      itemName: request.itemName,
+      categoryId: request.categoryId,
+      categoryName: request.categoryName,
+      quantity: request.quantity,
+      unit: request.unit,
+      priority: request.priority,
+      requestedBy: request.requestedBy,
+      requestedByName: request.requestedByName,
+      requestedAt: request.requestedAt,
+      status: RequestStatus.needed,
+      note: request.note,
+      imageUrl: request.imageUrl,
+      thumbnailUrl: request.thumbnailUrl,
+    );
+    _runInBackground(
+      _logService.recordRequestAction(
+        actionType: LogActionType.requestUpdated,
+        user: updatedBy,
+        request: neededRequest,
+        details:
+            '\u062a\u0645 \u0625\u0631\u062c\u0627\u0639 \u0627\u0644\u0637\u0644\u0628 \u0625\u0644\u0649 \u0627\u0644\u0645\u0637\u0644\u0648\u0628',
+      ),
     );
   }
 
@@ -397,11 +470,51 @@ class RequestService {
     }
   }
 
-  Future<String?> _categoryName(String categoryId) async {
-    if (categoryId.isEmpty) return null;
-    final doc = await _categories.doc(categoryId).get();
-    final data = doc.data();
-    return data?['nameAr'] as String?;
+  String _requestDocId({
+    required String roundId,
+    required String userId,
+    required String itemId,
+    required RequestStatus status,
+  }) {
+    return [
+      Uri.encodeComponent(roundId),
+      Uri.encodeComponent(userId),
+      Uri.encodeComponent(itemId),
+      status.name,
+    ].join('__');
+  }
+
+  void _runInBackground(Future<void> future) {
+    unawaited(future.catchError((_) {}));
+  }
+
+  Future<void> _notifyRequestAddSessionStartedOnce({
+    required AppUser user,
+    required ShoppingRequest request,
+  }) async {
+    final sessionId = [
+      Uri.encodeComponent(request.roundId),
+      Uri.encodeComponent(user.userId),
+    ].join('__');
+    final sessionRef = _requestAddSessions.doc(sessionId);
+    final claimed = await _firestore.runTransaction<bool>((transaction) async {
+      final snapshot = await transaction.get(sessionRef);
+      if (snapshot.exists) return false;
+      transaction.set(sessionRef, {
+        'sessionId': sessionId,
+        'roundId': request.roundId,
+        'userId': user.userId,
+        'createdBy': user.userId,
+        'createdAt': DateTime.now().toIso8601String(),
+        'firstRequestId': request.requestId,
+      });
+      return true;
+    });
+    if (!claimed) return;
+    await _notificationService.notifyRequestAddSessionStarted(
+      user: user,
+      request: request,
+    );
   }
 
   RequestPriority _highestPriority(

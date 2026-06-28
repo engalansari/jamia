@@ -19,9 +19,189 @@ service cloud.firestore {
       return isActiveUser() && userDoc(request.auth.uid).data.role == 'admin';
     }
 
+    function isSelfLastLoginUpdate(userId) {
+      return isActiveUser()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'lastLogin'])
+        && request.resource.data.userId == userId;
+    }
+
+    function isRoundCreate(roundId) {
+      return isActiveUser()
+        && request.resource.data.roundId == roundId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly([
+          'roundId',
+          'name',
+          'date',
+          'closeAt',
+          'status',
+          'createdBy',
+          'createdAt',
+          'shoppingStartedAt',
+          'shoppingStartedBy',
+          'shoppingStartedByName'
+        ]);
+    }
+
+    function isRoundStateUpdate() {
+      return isActiveUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'closedAt',
+          'closeAt',
+          'shoppingStartedAt',
+          'shoppingStartedBy',
+          'shoppingStartedByName',
+          'shoppingFinishedAt'
+        ])
+        && request.resource.data.roundId == resource.data.roundId
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function isRequestCreate(requestId) {
+      return isActiveUser()
+        && request.resource.data.requestId == requestId
+        && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status in ['needed', 'newList']
+        && request.resource.data.keys().hasOnly([
+          'requestId',
+          'roundId',
+          'itemId',
+          'itemName',
+          'categoryId',
+          'categoryName',
+          'quantity',
+          'unit',
+          'priority',
+          'note',
+          'imageUrl',
+          'thumbnailUrl',
+          'requestedBy',
+          'requestedByName',
+          'requestedAt',
+          'status',
+          'purchasedBy',
+          'purchasedByName',
+          'purchasedAt'
+        ]);
+    }
+
+    function keepsRequestIdentity() {
+      return request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.roundId == resource.data.roundId
+        && request.resource.data.itemId == resource.data.itemId
+        && request.resource.data.itemName == resource.data.itemName
+        && request.resource.data.categoryId == resource.data.categoryId
+        && request.resource.data.categoryName == resource.data.categoryName
+        && request.resource.data.requestedBy == resource.data.requestedBy
+        && request.resource.data.requestedByName == resource.data.requestedByName
+        && request.resource.data.requestedAt == resource.data.requestedAt;
+    }
+
+    function isOwnRequestEdit() {
+      return isActiveUser()
+        && resource.data.requestedBy == request.auth.uid
+        && keepsRequestIdentity()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'quantity',
+          'unit',
+          'priority',
+          'note',
+          'imageUrl',
+          'thumbnailUrl',
+          'updatedAt'
+        ]);
+    }
+
+    function isRequestPurchaseUpdate() {
+      return isActiveUser()
+        && keepsRequestIdentity()
+        && request.resource.data.quantity == resource.data.quantity
+        && request.resource.data.unit == resource.data.unit
+        && request.resource.data.priority == resource.data.priority
+        && request.resource.data.note == resource.data.note
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.thumbnailUrl == resource.data.thumbnailUrl
+        && request.resource.data.status == 'purchased'
+        && request.resource.data.purchasedBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'purchasedBy',
+          'purchasedByName',
+          'purchasedAt'
+        ]);
+    }
+
+    function isRequestUndoPurchaseUpdate() {
+      return isActiveUser()
+        && keepsRequestIdentity()
+        && resource.data.status == 'purchased'
+        && request.resource.data.quantity == resource.data.quantity
+        && request.resource.data.unit == resource.data.unit
+        && request.resource.data.priority == resource.data.priority
+        && request.resource.data.note == resource.data.note
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.thumbnailUrl == resource.data.thumbnailUrl
+        && request.resource.data.status == 'needed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'purchasedBy',
+          'purchasedByName',
+          'purchasedAt',
+          'updatedAt'
+        ]);
+    }
+
+    function isRequestMoveToNewListUpdate() {
+      return isActiveUser()
+        && keepsRequestIdentity()
+        && resource.data.status == 'needed'
+        && request.resource.data.quantity == resource.data.quantity
+        && request.resource.data.unit == resource.data.unit
+        && request.resource.data.priority == resource.data.priority
+        && request.resource.data.note == resource.data.note
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.thumbnailUrl == resource.data.thumbnailUrl
+        && request.resource.data.status == 'newList'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'movedToNewListAt'
+        ]);
+    }
+
+    function isRequestActivateNewListUpdate() {
+      return isActiveUser()
+        && keepsRequestIdentity()
+        && resource.data.status == 'newList'
+        && request.resource.data.quantity == resource.data.quantity
+        && request.resource.data.unit == resource.data.unit
+        && request.resource.data.priority == resource.data.priority
+        && request.resource.data.note == resource.data.note
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.thumbnailUrl == resource.data.thumbnailUrl
+        && request.resource.data.status == 'needed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'activatedFromNewListAt'
+        ]);
+    }
+
+    function canDeleteRequest() {
+      return isActiveUser()
+        && (isAdmin()
+          || (resource.data.status == 'needed'
+            && resource.data.requestedBy == request.auth.uid));
+    }
+
     match /users/{userId} {
       allow read: if isActiveUser();
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isSelfLastLoginUpdate(userId);
 
       match /pushTokens/{tokenId} {
         allow read, create, update, delete: if isActiveUser()
@@ -49,25 +229,69 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /rounds/{document=**} {
+    match /rounds/{roundId} {
       allow read: if isActiveUser();
-      allow write: if isActiveUser();
+      allow create: if isRoundCreate(roundId);
+      allow update: if isRoundStateUpdate();
+      allow delete: if isAdmin();
     }
 
-    match /requests/{document=**} {
+    match /requests/{requestId} {
       allow read: if isActiveUser();
-      allow write: if isActiveUser();
+      allow create: if isRequestCreate(requestId);
+      allow update: if isOwnRequestEdit()
+        || isRequestPurchaseUpdate()
+        || isRequestUndoPurchaseUpdate()
+        || isRequestMoveToNewListUpdate()
+        || isRequestActivateNewListUpdate();
+      allow delete: if canDeleteRequest();
     }
 
-    match /logs/{document=**} {
+    match /inAppAlerts/{alertId} {
+      allow read: if isActiveUser()
+        && resource.data.targetUserId == request.auth.uid;
+      allow create: if isActiveUser()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.targetUserId is string
+        && request.resource.data.seen == false;
+      allow update: if isActiveUser()
+        && resource.data.targetUserId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'seen',
+          'seenAt'
+        ]);
+      allow delete: if isAdmin();
+    }
+
+    match /requestAddSessions/{sessionId} {
+      allow read: if isActiveUser()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isActiveUser()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'sessionId',
+          'roundId',
+          'userId',
+          'createdBy',
+          'createdAt',
+          'firstRequestId'
+        ]);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /operationLogs/{document=**} {
       allow read: if isActiveUser();
-      allow create: if isActiveUser();
+      allow create: if isActiveUser()
+        && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
 
     match /notifications/{document=**} {
       allow read: if isActiveUser();
-      allow create: if isActiveUser();
+      allow create: if isActiveUser()
+        && request.resource.data.createdBy == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 

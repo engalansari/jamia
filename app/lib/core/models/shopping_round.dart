@@ -24,6 +24,8 @@ class ShoppingRound {
     required this.createdBy,
     required this.createdAt,
     this.shoppingStartedAt,
+    this.shoppingStartedBy,
+    this.shoppingStartedByName,
   });
 
   final String roundId;
@@ -34,10 +36,14 @@ class ShoppingRound {
   final String createdBy;
   final DateTime createdAt;
   final DateTime? shoppingStartedAt;
+  final String? shoppingStartedBy;
+  final String? shoppingStartedByName;
 
-  bool get isOpen =>
-      status == RoundStatus.open && DateTime.now().isBefore(closeAt);
+  bool get isOpen => status == RoundStatus.open;
   bool get isShopping => shoppingStartedAt != null;
+  bool get isShoppingWindowExpired =>
+      isShopping && !DateTime.now().isBefore(closeAt);
+  bool get acceptsCurrentShoppingRequests => !isShoppingWindowExpired;
 
   Duration remainingFrom(DateTime now) {
     final remaining = closeAt.difference(now);
@@ -64,6 +70,8 @@ class ShoppingRound {
           _dateTimeFromJsonValue(json['createdAt']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       shoppingStartedAt: _dateTimeFromJsonValue(json['shoppingStartedAt']),
+      shoppingStartedBy: json['shoppingStartedBy'] as String?,
+      shoppingStartedByName: json['shoppingStartedByName'] as String?,
     );
   }
 
@@ -77,6 +85,8 @@ class ShoppingRound {
       'createdBy': createdBy,
       'createdAt': createdAt.toIso8601String(),
       'shoppingStartedAt': shoppingStartedAt?.toIso8601String(),
+      'shoppingStartedBy': shoppingStartedBy,
+      'shoppingStartedByName': shoppingStartedByName,
     };
   }
 }

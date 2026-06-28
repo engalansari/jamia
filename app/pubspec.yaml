@@ -71,6 +71,19 @@ flutter:
     - assets/i18n/ar.json
     - assets/i18n/en.json
 
+  fonts:
+    - family: Dubai
+      fonts:
+        - asset: assets/fonts/Dubai-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Dubai-Medium.ttf
+          weight: 600
+        - asset: assets/fonts/Dubai-Bold.ttf
+          weight: 800
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

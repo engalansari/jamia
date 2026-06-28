@@ -45,6 +45,12 @@ class JamiaApp extends StatefulWidget {
     context.findAncestorStateOfType<_JamiaAppState>()?.toggleTheme();
   }
 
+  static void setLightBackground(BuildContext context, Color color) {
+    context.findAncestorStateOfType<_JamiaAppState>()?.setLightBackground(
+      color,
+    );
+  }
+
   @override
   State<JamiaApp> createState() => _JamiaAppState();
 }
@@ -52,6 +58,7 @@ class JamiaApp extends StatefulWidget {
 class _JamiaAppState extends State<JamiaApp> {
   Locale _locale = const Locale('ar');
   ThemeMode _themeMode = ThemeMode.light;
+  Color _lightBackground = Colors.white;
 
   void setLocale(Locale locale) {
     setState(() => _locale = locale);
@@ -63,6 +70,10 @@ class _JamiaAppState extends State<JamiaApp> {
           ? ThemeMode.light
           : ThemeMode.dark;
     });
+  }
+
+  void setLightBackground(Color color) {
+    setState(() => _lightBackground = color);
   }
 
   @override
@@ -100,7 +111,7 @@ class _JamiaAppState extends State<JamiaApp> {
       seedColor: const Color(0xFF2F55C7),
       brightness: brightness,
     );
-    final surface = isDark ? const Color(0xFF101827) : const Color(0xFFF5F7FC);
+    final surface = isDark ? const Color(0xFF101827) : _lightBackground;
     final cardColor = isDark ? const Color(0xFF172033) : Colors.white;
     final borderColor = isDark
         ? const Color(0xFF3B4A70)
@@ -109,117 +120,132 @@ class _JamiaAppState extends State<JamiaApp> {
         ? const Color(0xFFF3F6FF)
         : const Color(0xFF111827);
     final mutedTextColor = isDark
-        ? const Color(0xFF9BA8C4)
-        : const Color(0xFF4F5C7D);
-
-    // نص الأزرار - قوي وسميك جداً
+        ? const Color(0xFFB9C4DB)
+        : const Color(0xFF4B5563);
     const buttonTextStyle = TextStyle(
+      fontFamily: 'Dubai',
       fontWeight: FontWeight.w900,
       fontSize: 16,
-      letterSpacing: 0.5,
+      letterSpacing: 0,
+      height: 1.2,
     );
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
-      fontFamily: 'sans-serif',
+      fontFamily: 'Dubai',
       colorScheme: colorScheme,
       scaffoldBackgroundColor: surface,
       textTheme: (isDark ? ThemeData.dark() : ThemeData.light()).textTheme
           .apply(
-            fontFamily: 'sans-serif',
+            fontFamily: 'Dubai',
             bodyColor: textColor,
             displayColor: textColor,
           )
           .copyWith(
             displayLarge: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 32,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
               color: textColor,
             ),
             displayMedium: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
               color: textColor,
             ),
             displaySmall: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 24,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
+              height: 1.15,
               color: textColor,
             ),
             headlineLarge: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 22,
               fontWeight: FontWeight.w800,
+              height: 1.2,
               color: textColor,
             ),
             headlineMedium: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 20,
               fontWeight: FontWeight.w800,
+              height: 1.2,
               color: textColor,
             ),
             headlineSmall: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 18,
               fontWeight: FontWeight.w800,
+              height: 1.2,
               color: textColor,
             ),
             titleLarge: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 18,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
               color: textColor,
             ),
             titleMedium: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
               color: textColor,
             ),
             titleSmall: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
               color: textColor,
             ),
             bodyLarge: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 16,
               fontWeight: FontWeight.w600,
+              height: 1.35,
               color: textColor,
             ),
             bodyMedium: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 14,
               fontWeight: FontWeight.w600,
+              height: 1.35,
               color: textColor,
             ),
             bodySmall: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 12,
               fontWeight: FontWeight.w500,
+              height: 1.35,
               color: mutedTextColor,
             ),
             labelLarge: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 14,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
               color: textColor,
             ),
             labelMedium: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 12,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
               color: textColor,
             ),
             labelSmall: TextStyle(
-              fontFamily: 'sans-serif',
+              fontFamily: 'Dubai',
               fontSize: 11,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
               color: mutedTextColor,
             ),
           ),
@@ -230,9 +256,10 @@ class _JamiaAppState extends State<JamiaApp> {
         backgroundColor: surface,
         foregroundColor: textColor,
         titleTextStyle: TextStyle(
-          fontFamily: 'sans-serif',
+          fontFamily: 'Dubai',
           fontSize: 22,
           fontWeight: FontWeight.w900,
+          height: 1.2,
           color: textColor,
         ),
       ),
@@ -248,13 +275,13 @@ class _JamiaAppState extends State<JamiaApp> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         iconColor: colorScheme.primary,
         titleTextStyle: TextStyle(
-          fontFamily: 'sans-serif',
+          fontFamily: 'Dubai',
           fontSize: 16,
           fontWeight: FontWeight.w800,
           color: textColor,
         ),
         subtitleTextStyle: TextStyle(
-          fontFamily: 'sans-serif',
+          fontFamily: 'Dubai',
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: mutedTextColor,
@@ -283,7 +310,6 @@ class _JamiaAppState extends State<JamiaApp> {
           color: mutedTextColor,
         ),
       ),
-      // ⭐ تحسين الأزرار الممتلئة (FilledButton)
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(64, 50),
@@ -294,7 +320,6 @@ class _JamiaAppState extends State<JamiaApp> {
           textStyle: buttonTextStyle,
         ),
       ),
-      // ⭐ تحسين الأزرار المخطط (OutlinedButton)
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(64, 50),
@@ -306,18 +331,23 @@ class _JamiaAppState extends State<JamiaApp> {
           textStyle: buttonTextStyle,
         ),
       ),
-      // ⭐ تحسين الأزرار النصية (TextButton)
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           textStyle: buttonTextStyle,
         ),
       ),
-      // ⭐ تحسين الزر العائم (FloatingActionButton)
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        sizeConstraints: const BoxConstraints.tightFor(width: 56, height: 56),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        sizeConstraints: BoxConstraints.tightFor(width: 56, height: 56),
         elevation: 8,
         highlightElevation: 12,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: isDark

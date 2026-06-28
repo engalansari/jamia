@@ -5,9 +5,17 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isRequestImage() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /request-images/{userId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == userId;
+      allow write: if signedIn()
+        && request.auth.uid == userId
+        && isRequestImage();
     }
 
     match /{allPaths=**} {

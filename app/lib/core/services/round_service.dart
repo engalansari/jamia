@@ -108,12 +108,36 @@ class RoundService {
     await _rounds.doc(openRound.roundId).set({
       'closeAt': now.add(duration).toIso8601String(),
       'shoppingStartedAt': now.toIso8601String(),
+      'shoppingStartedBy': startedBy.userId,
+      'shoppingStartedByName': startedBy.displayName,
     }, SetOptions(merge: true));
+    await _activateNewListRequests(openRound.roundId);
     await _notificationService.notifyShoppingStarted(
       user: startedBy,
       roundId: openRound.roundId,
       roundName: openRound.name,
     );
+  }
+
+  Future<void> cancelShoppingTime(ShoppingRound round) async {
+    await _rounds.doc(round.roundId).set({
+      'closeAt': DateTime.now().add(_requestCollectionWindow).toIso8601String(),
+      'shoppingStartedAt': FieldValue.delete(),
+      'shoppingStartedBy': FieldValue.delete(),
+      'shoppingStartedByName': FieldValue.delete(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> finishShoppingRound(ShoppingRound round) async {
+    final now = DateTime.now();
+    await _moveNeededRequestsToNewList(round.roundId);
+    await _rounds.doc(round.roundId).set({
+      'closeAt': now.add(_requestCollectionWindow).toIso8601String(),
+      'shoppingStartedAt': FieldValue.delete(),
+      'shoppingStartedBy': FieldValue.delete(),
+      'shoppingStartedByName': FieldValue.delete(),
+      'shoppingFinishedAt': now.toIso8601String(),
+    }, SetOptions(merge: true));
   }
 
   Future<ShoppingRound> _createRound({
@@ -132,6 +156,10 @@ class RoundService {
       createdBy: createdBy.userId,
       createdAt: createdAt,
       shoppingStartedAt: shoppingStartedAt,
+      shoppingStartedBy: shoppingStartedAt == null ? null : createdBy.userId,
+      shoppingStartedByName: shoppingStartedAt == null
+          ? null
+          : createdBy.displayName,
     );
 
     await doc.set(round.toJson());
@@ -168,8 +196,24 @@ class RoundService {
   }
 
   Future<void> closeRoundIfExpired(ShoppingRound round) async {
-    if (round.status == RoundStatus.open && !round.isOpen) {
-      await closeRound(round.roundId);
+    return;
+  }
+
+  Future<void> cleanupClosedHistoryOlderThan30Days() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    final snapshot = await _rounds
+        .where('status', isEqualTo: RoundStatus.closed.name)
+        .get();
+    final staleRounds = <ShoppingRound>[];
+    for (final doc in snapshot.docs) {
+      final round = ShoppingRound.fromJson({...doc.data(), 'roundId': doc.id});
+      final closedAt = _dateTimeFromValue(doc.data()['closedAt']);
+      if (closedAt != null && closedAt.isBefore(cutoff)) {
+        staleRounds.add(round);
+      }
+    }
+    for (final round in staleRounds) {
+      await _deleteRoundHistory(round.roundId);
     }
   }
 
@@ -238,6 +282,100 @@ class RoundService {
       }, SetOptions(merge: true));
     }
     await batch.commit();
+  }
+
+  Future<void> _moveNeededRequestsToNewList(String roundId) async {
+    final snapshot = await _requests
+        .where('roundId', isEqualTo: roundId)
+        .where('status', isEqualTo: RequestStatus.needed.name)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+
+    var batch = _firestore.batch();
+    var operationCount = 0;
+    final now = DateTime.now().toIso8601String();
+    for (final doc in snapshot.docs) {
+      batch.set(doc.reference, {
+        'status': RequestStatus.newList.name,
+        'movedToNewListAt': now,
+      }, SetOptions(merge: true));
+      operationCount++;
+      if (operationCount == 450) {
+        await batch.commit();
+        batch = _firestore.batch();
+        operationCount = 0;
+      }
+    }
+    if (operationCount > 0) await batch.commit();
+  }
+
+  Future<void> _activateNewListRequests(String roundId) async {
+    final snapshot = await _requests
+        .where('roundId', isEqualTo: roundId)
+        .where('status', isEqualTo: RequestStatus.newList.name)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+
+    var batch = _firestore.batch();
+    var operationCount = 0;
+    final now = DateTime.now().toIso8601String();
+    for (final doc in snapshot.docs) {
+      batch.set(doc.reference, {
+        'status': RequestStatus.needed.name,
+        'activatedFromNewListAt': now,
+      }, SetOptions(merge: true));
+      operationCount++;
+      if (operationCount == 450) {
+        await batch.commit();
+        batch = _firestore.batch();
+        operationCount = 0;
+      }
+    }
+    if (operationCount > 0) await batch.commit();
+  }
+
+  Future<void> _deleteRoundHistory(String roundId) async {
+    await _deleteQuery(_requests.where('roundId', isEqualTo: roundId));
+    await _deleteQuery(
+      _firestore
+          .collection('notifications')
+          .where('roundId', isEqualTo: roundId),
+    );
+    await _deleteQuery(
+      _firestore.collection('inAppAlerts').where('roundId', isEqualTo: roundId),
+    );
+    await _rounds.doc(roundId).delete();
+  }
+
+  Future<void> _deleteQuery(Query<Map<String, dynamic>> query) async {
+    final snapshot = await query.get();
+    if (snapshot.docs.isEmpty) return;
+    var batch = _firestore.batch();
+    var operationCount = 0;
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+      operationCount++;
+      if (operationCount == 450) {
+        await batch.commit();
+        batch = _firestore.batch();
+        operationCount = 0;
+      }
+    }
+    if (operationCount > 0) await batch.commit();
+  }
+
+  DateTime? _dateTimeFromValue(Object? value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    final dynamic dynamicValue = value;
+    try {
+      final Object? maybeDate = dynamicValue.toDate();
+      if (maybeDate is DateTime) return maybeDate;
+    } catch (_) {
+      // Firestore Timestamp is handled above when available.
+    }
+    return null;
   }
 
   String _roundName(DateTime date) {

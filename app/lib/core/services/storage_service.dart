@@ -9,11 +9,12 @@ class StorageService {
   final FirebaseStorage _storage;
 
   Future<String> uploadRequestImage({
+    required String userId,
     required String requestId,
     required Uint8List bytes,
     required String contentType,
   }) async {
-    final ref = _storage.ref('requests/$requestId/original');
+    final ref = _storage.ref('request-images/$userId/$requestId/original');
     final task = await ref.putData(
       bytes,
       SettableMetadata(contentType: contentType),
